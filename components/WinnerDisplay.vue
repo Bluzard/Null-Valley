@@ -1,58 +1,52 @@
 <template>
-    <v-slide-y-transition>
-      <v-row v-if="winner" class="mb-8">
-        <v-col cols="12">
-          <v-card elevation="8" class="winner-card">
-            <v-container>
-              <v-row align="center">
-                <v-col cols="12" md="4" class="text-center">
-                  <v-avatar size="200" class="mb-4">
-                    <v-img :src="winner.photo" :alt="winner.name" cover class="fighter-image"/>
-                  </v-avatar>
-                  <div class="text-h3 primary--text font-weight-bold">
-                    ¡GANADOR!
-                  </div>
-                </v-col>
-                <v-col cols="12" md="8">
-                  <div class="text-h2 mb-4">{{ winner.name }}</div>
-                  <v-chip large color="success" class="mb-4">
-                    Puntuación Final: {{ fighterScore }}
-                  </v-chip>
-                  <div class="text-h6 mb-2">Resumen de votos:</div>
-                  <div class="d-flex">
-                    <v-chip class="mr-2" color="success">
-                      Positivos: {{ positiveVotes }}
-                    </v-chip>
-                    <v-chip color="error">
-                      Negativos: {{ negativeVotes }}
-                    </v-chip>
-                  </div>
-                </v-col>
-              </v-row>
-            </v-container>
-          </v-card>
-        </v-col>
-      </v-row>
-    </v-slide-y-transition>
-  </template>
+  <v-card v-if="winner" class="text-center pa-4">
+    <v-card-title class="text-h4">¡Tenemos un ganador!</v-card-title>
+    <v-img
+      :src="winner.photo"
+      :alt="winner.name"
+      height="300"
+      cover
+      class="my-4"
+    />
+    <v-card-title>{{ winner.name }}</v-card-title>
+    <v-card-subtitle>Puntuación final: {{ winnerScore }}</v-card-subtitle>
+    
+    <v-btn
+      color="primary"
+      @click="$emit('reset')"
+      class="mt-4"
+    >
+      Reiniciar encuesta
+    </v-btn>
+  </v-card>
   
-  <script setup>
-  defineProps({
-    winner: {
-      type: Object,
-      required: true
-    },
-    fighterScore: {
-      type: Number,
-      required: true
-    },
-    positiveVotes: {
-      type: Number,
-      required: true
-    },
-    negativeVotes: {
-      type: Number,
-      required: true
-    }
-  })
-  </script>
+  <v-card v-else-if="isTie" class="text-center pa-4">
+    <v-card-title class="text-h4">¡Empate!</v-card-title>
+    <v-btn
+      color="primary"
+      @click="$emit('reset')"
+      class="mt-4"
+    >
+      Reiniciar encuesta
+    </v-btn>
+  </v-card>
+</template>
+
+<script setup>
+const props = defineProps({
+  winner: {
+    type: Object,
+    default: null
+  },
+  winnerScore: {
+    type: Number,
+    default: 0
+  },
+  isTie: {
+    type: Boolean,
+    default: false
+  }
+})
+
+defineEmits(['reset'])
+</script>

@@ -3,13 +3,16 @@ import Vote from '../../models/Vote';
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
-  console.log(body); // Verifica los datos recibidos
+  console.log(body);
+
+  console.log('Creating new vote', body);
+  
 
   const newVote = new Vote({
     nickname: body.nickname,
     comment: body.comment,
     rating: body.rating,
-    fighterId: body.fighter,
+    fighterId: body.fighterId,
   });
 
   try {

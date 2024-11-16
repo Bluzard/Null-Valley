@@ -1,248 +1,140 @@
 <template>
-    <v-container class="py-6">
-      <v-row class="mb-4">
-        <v-col cols="12">
-          <voting-progress :total-votes="totalVotes" />
-        </v-col>
-      </v-row>
-  
-      <winner-display
-        v-if="winner"
-        :winner="winner"
-        :fighter-score="getFighterScore(winner._id)"
-        :positive-votes="getPositiveVotes(winner._id)"
-        :negative-votes="getNegativeVotes(winner._id)"
-      />
-  
-      <v-row>
-        <v-col cols="12" md="8">
-          <fighter-list
-            :fighters="fighters"
-            :selected-fighter="selectedFighter"
-            :comments="comments"
-            @select-fighter="selectFighter"
-          />
-  
-          <vote-form
-            :selected-fighter="selectedFighter"
-            :total-votes="totalVotes"
-            @submit-vote="submitVote"
-          />
-        </v-col>
-  
-        <v-col cols="12" md="4">
-          <vote-history
-            :comments="comments"
-            :fighters="fighters"
-          />
-        </v-col>
-      </v-row>
-    </v-container>
-  </template>
-  
-  <script setup>
-  import { ref, onMounted } from 'vue';
-  
-  // Datos de respaldo de los peleadores
-  const fallbackFighters = [
-    {
-      "_id": "6737f5fd45785a8f93497570",
-      "name": "David Larousse",
-      "photo": "/images/david.jpg"
-    },
-    {
-      "_id": "6737f5fd45785a8f93497571",
-      "name": "Jonathan Lowrie",
-      "photo": "/images/jonathan.jpg"
-    }
-  ];
-  
-  const fighters = ref(fallbackFighters); // Usar directamente los datos de respaldo
-  const comments = ref([]);
-  const selectedFighter = ref(null);
-  const winner = ref(null);
-  const totalVotes = ref(0); 
-  
-  // Función para calcular los votos totales
-  const calculateTotalVotes = () => {
-    totalVotes.value = comments.value.filter(vote => 
-      vote.rating !== undefined && 
-      vote.rating !== null && 
-      (vote.rating > 0 || vote.rating < 0)
-    ).length;
-  };
-  
-  // Cargar los comentarios
-  const loadComments = async () => {
-    try {
-      const response = await fetch('/api/votes');
-      if (response.ok) {
-        const data = await response.json();
-        comments.value = Array.isArray(data) ? data : data.comments || [];
-        calculateTotalVotes(); 
-        calculateWinner();
-      }
-    } catch (error) {
-      console.error('Error al cargar comentarios:', error);
-      comments.value = [];
-    }
-  };
-  
-  // Función para calcular al ganador
-  const calculateWinner = () => {
-    if (totalVotes.value < 10) {
-      winner.value = null;
-      return;
-    }
-  
-    if (!fighters.value.length) {
-      winner.value = null;
-      return;
-    }
-  
-    const scores = {};
-    let maxScore = -Infinity;
-    let winningFighter = null;
-  
-    fighters.value.forEach(fighter => {
-      const score = getFighterScore(fighter._id);
-      scores[fighter._id] = score;
-  
-      if (score > maxScore) {
-        maxScore = score;
-        winningFighter = fighter;
-      }
-    });
-  
-    winner.value = maxScore > 0 ? winningFighter : null;
-  };
-  
-  // Funciones auxiliares para obtener las puntuaciones de los luchadores
-  const getFighterScore = (fighterId) => {
-    if (!fighterId || !comments.value.length) return 0;
-  
-    return comments.value
-      .filter(vote => vote.fighter === fighterId && vote.rating !== undefined)
-      .reduce((total, vote) => total + (Number(vote.rating) || 0), 0);
-  };
-  
-  // Seleccionar luchador
-  const selectFighter = (fighter) => {
-    selectedFighter.value = fighter;
-  };
-  
-  // Enviar voto
-  const submitVote = async ({ nickname, comment, rating }) => {
-    if (!selectedFighter.value || rating === undefined || !nickname || !comment) {
-      return;
-    }
-  
-    const sanitizedComment = obfuscateComment(comment);
-  
-    const newVote = {
-      nickname,
-      comment: sanitizedComment,
-      rating: Number(rating),
-      fighter: selectedFighter.value._id,
-    };
-  
-    try {
-      const response = await fetch('/api/votes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newVote),
-      });
-  
-      if (response.ok) {
-        await loadComments();
-      }
-    } catch (error) {
-      console.error('Error al enviar voto:', error);
-    }
-  };
-  
-  // Cargar los datos cuando se monta el componente
-  onMounted(() => {
-    // Comentamos el fetch de luchadores para usar directamente los datos de respaldo
-    // loadFighters(); // Ya no es necesario hacer fetch, usamos fallbackFighters directamente.
-    loadComments();
-  });
-  </script>
-  
+  <v-container>
+    <v-row v-if="!hasWinner && !isTie">
+      <v-col cols="12">
+        <VoteForm
+          :fighters="fighters"
+          @vote-submitted="handleVote"
+        />
+      </v-col>
+      
+      <v-col cols="12" md="6" v-for="fighter in fighters" :key="fighter._id">
+        <FighterCard
+          :fighter="fighter"
+          :comments="getCommentsForFighter(fighter._id)"
+          :total-score="getScoreForFighter(fighter._id)"
+        />
+      </v-col>
+    </v-row>
+    
+    <WinnerDisplay
+      v-else
+      :winner="winner"
+      :winner-score="winnerScore"
+      :is-tie="isTie"
+      @reset="resetVoting"
+    />
+  </v-container>
+</template>
 
-  
+<script setup>
 
-  
-  <style scoped>
-  .fighter-card {
-    transition: all 0.3s ease;
-    cursor: pointer;
+const fighters = ref([])
+const votes = ref([])
+const hasWinner = ref(false)
+const isTie = ref(false)
+const winner = ref(null)
+const winnerScore = ref(0)
+
+const fallbackFighters = [
+  {
+    "_id": "6737f5fd45785a8f93497570",
+    "name": "David Larousse",
+    "photo": "/images/david.jpg"
+  },
+  {
+    "_id": "6737f5fd45785a8f93497571",
+    "name": "Jonathan Lowrie",
+    "photo": "/images/jonathan.jpg"
+  }
+]
+
+// Cargar luchadores y votos al iniciar
+onMounted(async () => {
+  try {
+    const response = await fetch('/api/fighters')
+    fighters.value = await response.json()
+  } catch (error) {
+    console.error('Error loading fighters:', error)
+    fighters.value = fallbackFighters
   }
   
-  .fighter-card:hover {
-    transform: translateY(-4px);
+  try {
+    const response = await fetch('/api/votes')
+    votes.value = await response.json()
+    checkWinner()
+  } catch (error) {
+    console.error('Error loading votes:', error)
+    votes.value = []
   }
-  
-  .fighter-image {
-    object-fit: cover;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-  }
-  
-  .selected-fighter {
-    border: 3px solid var(--v-primary-base);
-  }
-  
-  .winner-card {
-    background: linear-gradient(to right, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), 
-                linear-gradient(135deg, var(--v-success-base), var(--v-success-darken2));
-    border: 4px solid var(--v-success-base);
-  }
-  
-  .v-list-group__items .v-list-item {
-    padding-left: 32px;
-  }
-  
-  .comment-text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  .fighter-info {
-    flex-grow: 1;
-  }
-  
-  @media (max-width: 600px) {
-    .text-h2 {
-      font-size: 2rem !important;
+})
+
+const getCommentsForFighter = (fighterId) => {
+  return votes.value.filter(vote => vote.fighterId === fighterId)
+}
+
+const getScoreForFighter = (fighterId) => {
+  return votes.value
+    .filter(vote => vote.fighterId === fighterId)
+    .reduce((sum, vote) => sum + vote.rating, 0)
+}
+
+const checkWinner = () => {
+  if (votes.value.length >= 10) {
+    const scores = fighters.value.map(fighter => ({
+      fighter,
+      score: getScoreForFighter(fighter._id)
+    }))
+    
+    const positiveScores = scores.filter(s => s.score > 0)
+    
+    if (positiveScores.length === 0) {
+      isTie.value = true
+      return
     }
     
-    .text-h3 {
-      font-size: 1.75rem !important;
-    }
+    const maxScore = Math.max(...positiveScores.map(s => s.score))
+    const winnersWithMaxScore = positiveScores.filter(s => s.score === maxScore)
     
-    .text-h4 {
-      font-size: 1.5rem !important;
-    }
-    
-    .text-h5 {
-      font-size: 1.25rem !important;
-    }
-    
-    .v-card-title {
-      flex-direction: column;
-      text-align: center;
-    }
-    
-    .v-avatar {
-      margin-right: 0 !important;
-      margin-bottom: 1rem;
-    }
-    
-    .v-btn.x-large {
-      width: 100%;
+    if (winnersWithMaxScore.length === 1) {
+      winner.value = winnersWithMaxScore[0].fighter
+      winnerScore.value = maxScore
+      hasWinner.value = true
+    } else {
+      isTie.value = true
     }
   }
-  </style>
+}
+
+const handleVote = async (voteData) => {
+  try {
+    const response = await fetch('/api/votes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(voteData)
+    })
+    
+    const newVote = await response.json()
+    votes.value.push(newVote)
+    checkWinner()
+  } catch (error) {
+    console.error('Error submitting vote:', error)
+  }
+}
+
+const resetVoting = async () => {
+  votes.value = []
+  hasWinner.value = false
+  isTie.value = false
+  winner.value = null
+  winnerScore.value = 0
+  
+  try {
+    await fetch('/api/votes', { method: 'DELETE' })
+  } catch (error) {
+    console.error('Error resetting votes:', error)
+  }
+}
+</script>
