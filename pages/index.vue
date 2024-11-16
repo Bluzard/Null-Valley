@@ -42,14 +42,9 @@
   
   <script setup>
   import { ref, computed, onMounted } from 'vue'
-  import VotingProgress from './components/VotingProgress.vue'
-  import WinnerDisplay from './components/WinnerDisplay.vue'
-  import FighterList from './components/FighterList.vue'
-  import VoteForm from './components/VoteForm.vue'
-  import VoteHistory from './components/VoteHistory.vue'
   
   const fighters = ref([])
-  const comments = ref({})
+  const comments = ref([])
   const selectedFighter = ref(null)
   const winner = ref(null)
   
@@ -95,28 +90,21 @@
   }
   
   const loadComments = async () => {
-    try {
-      const response = await fetch('/api/votes')
-      if (response.ok) {
-        const votes = await response.json()
-        comments.value = {}
-        votes.forEach(vote => {
-          if (!comments.value[vote.fighter]) {
-            comments.value[vote.fighter] = []
-          }
-          comments.value[vote.fighter].push({
-            nickname: vote.nickname,
-            comment: obfuscateComment(vote.comment),
-            rating: vote.rating
-          })
-        })
-        calculateWinner()
-      }
-    } catch (error) {
-      console.error('Error loading comments:', error)
+  try {
+    const response = await fetch('/api/votes');
+    if (response.ok) {
+      const data = await response.json();
+      comments.value = Array.isArray(data) ? data : data.comments; // Asegúrate de que sea un array
+    } else {
+      console.error('Error en la respuesta del servidor:', response.status);
     }
+  } catch (error) {
+    console.error('Error al cargar comentarios:', error);
   }
-  
+};
+
+
+
   const calculateWinner = () => {
     if (totalVotes.value < 10) {
       winner.value = null
