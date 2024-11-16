@@ -2,10 +2,10 @@
     <v-card color="info" class="pa-4">
       <div class="text-center">
         <div class="text-h5 white--text mb-2">Estado de la Votación</div>
-        <v-progress-linear 
-          :value="(totalVotes / 10) * 100" 
-          height="25" 
-          rounded 
+        <v-progress-linear
+          :value="(totalVotes / 10) * 100"
+          height="25"
+          rounded
           class="mb-2"
         >
           <template v-slot:default="{ value }">
@@ -27,3 +27,4 @@
     }
   })
   </script>
+  

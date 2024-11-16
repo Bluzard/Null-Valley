@@ -41,83 +41,61 @@
   </template>
   
   <script setup>
-  import { ref, computed, onMounted, watch } from 'vue';
+  import { ref, onMounted } from 'vue';
+  
+  // Datos de respaldo de los peleadores
+  const fallbackFighters = [
+    {
+      "_id": "6737f5fd45785a8f93497570",
+      "name": "David Larousse",
+      "photo": "/images/david.jpg"
+    },
+    {
+      "_id": "6737f5fd45785a8f93497571",
+      "name": "Jonathan Lowrie",
+      "photo": "/images/jonathan.jpg"
+    }
+  ];
   
   const fighters = ref([]);
   const comments = ref([]);
   const selectedFighter = ref(null);
   const winner = ref(null);
+  const totalVotes = ref(0); 
   
-  const totalVotes = computed(() => 
-    comments.value.filter(vote => 
+  // Función para calcular los votos totales
+  const calculateTotalVotes = () => {
+    totalVotes.value = comments.value.filter(vote => 
       vote.rating !== undefined && 
       vote.rating !== null && 
       (vote.rating > 0 || vote.rating < 0)
-    ).length
-  );
-  
-  const getFighterScore = (fighterId) => {
-    if (!fighterId || !comments.value.length) return 0;
-    
-    return comments.value
-      .filter(vote => vote.fighter === fighterId && vote.rating !== undefined)
-      .reduce((total, vote) => total + (Number(vote.rating) || 0), 0);
-  };
-  
-  const getPositiveVotes = (fighterId) => {
-    if (!fighterId || !comments.value.length) return 0;
-    
-    return comments.value.filter(
-      vote => vote.fighter === fighterId && Number(vote.rating) > 0
     ).length;
   };
   
-  const getNegativeVotes = (fighterId) => {
-    if (!fighterId || !comments.value.length) return 0;
-    
-    return comments.value.filter(
-      vote => vote.fighter === fighterId && Number(vote.rating) < 0
-    ).length;
-  };
-  
-  const getFighterVotePercentage = (fighterId) => {
-    if (!fighterId || totalVotes.value === 0) return 0;
-    
-    const fighterVotes = comments.value.filter(
-      vote => vote.fighter === fighterId && vote.rating !== undefined
-    ).length;
-    
-    return Math.round((fighterVotes / totalVotes.value) * 100);
-  };
-  
-  const prohibitedWords = ['Manzana', 'coliflor', 'bombilla', 'derecha', 'izquierda', 'rojo', 'azul'];
-  
-  const obfuscateComment = (text) => {
-    let obfuscatedText = text;
-    prohibitedWords.forEach((word) => {
-      const regex = new RegExp(word, 'gi');
-      obfuscatedText = obfuscatedText.replace(regex, '****');
-    });
-    return obfuscatedText;
-  };
-  
+  // Cargar los luchadores
   const loadFighters = async () => {
     try {
       const response = await fetch('/api/fighters');
       if (response.ok) {
         fighters.value = await response.json();
+      } else {
+        console.error('No se pudo conectar a la base de datos. Usando datos de respaldo.');
+        fighters.value = fallbackFighters; // Si no hay conexión, usar datos de respaldo
       }
     } catch (error) {
-      console.error('Error al cargar fighters:', error);
+      console.error('Error al cargar luchadores:', error);
+      fighters.value = fallbackFighters; // Si la conexión falla, usar datos de respaldo
     }
   };
   
+  // Cargar los comentarios
   const loadComments = async () => {
     try {
       const response = await fetch('/api/votes');
       if (response.ok) {
         const data = await response.json();
         comments.value = Array.isArray(data) ? data : data.comments || [];
+        calculateTotalVotes(); 
         calculateWinner();
       }
     } catch (error) {
@@ -126,6 +104,7 @@
     }
   };
   
+  // Función para calcular al ganador
   const calculateWinner = () => {
     if (totalVotes.value < 10) {
       winner.value = null;
@@ -144,7 +123,7 @@
     fighters.value.forEach(fighter => {
       const score = getFighterScore(fighter._id);
       scores[fighter._id] = score;
-      
+  
       if (score > maxScore) {
         maxScore = score;
         winningFighter = fighter;
@@ -154,10 +133,21 @@
     winner.value = maxScore > 0 ? winningFighter : null;
   };
   
+  // Funciones auxiliares para obtener las puntuaciones de los luchadores
+  const getFighterScore = (fighterId) => {
+    if (!fighterId || !comments.value.length) return 0;
+  
+    return comments.value
+      .filter(vote => vote.fighter === fighterId && vote.rating !== undefined)
+      .reduce((total, vote) => total + (Number(vote.rating) || 0), 0);
+  };
+  
+  // Seleccionar luchador
   const selectFighter = (fighter) => {
     selectedFighter.value = fighter;
   };
   
+  // Enviar voto
   const submitVote = async ({ nickname, comment, rating }) => {
     if (!selectedFighter.value || rating === undefined || !nickname || !comment) {
       return;
@@ -187,15 +177,14 @@
     }
   };
   
-  watch(comments, () => {
-    calculateWinner();
-  }, { deep: true });
-  
+  // Cargar los datos cuando se monta el componente
   onMounted(() => {
     loadFighters();
     loadComments();
   });
   </script>
+  
+
   
   <style scoped>
   .fighter-card {
