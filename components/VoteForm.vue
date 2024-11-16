@@ -8,7 +8,7 @@
       <v-form ref="form" @submit.prevent="submitVote" v-model="valid">
         <v-container>
           <v-row>
-            <v-col cols="12" md="6">
+            <v-col cols="12" sm="6">
               <v-text-field
                 v-model="nickname"
                 label="Nickname (6-8 caracteres alfanuméricos)"
@@ -16,10 +16,11 @@
                 required
                 variant="outlined"
                 clearable
+                density="comfortable"
               />
             </v-col>
             
-            <v-col cols="12" md="6">
+            <v-col cols="12" sm="6">
               <v-select
                 v-model="selectedFighter"
                 :items="fighters"
@@ -29,6 +30,7 @@
                 :rules="[v => !!v || 'Debes seleccionar un luchador']"
                 required
                 variant="outlined"
+                density="comfortable"
               />
             </v-col>
             
@@ -41,16 +43,17 @@
                 required
                 variant="outlined"
                 rows="3"
+                auto-grow
               />
             </v-col>
             
-            <v-col cols="12">
+            <v-col cols="12" sm="6" offset-sm="3">
               <v-card variant="outlined" class="pa-4">
                 <v-card-title class="text-subtitle-1">Valoración</v-card-title>
                 <v-radio-group 
                   v-model="rating" 
                   :rules="[v => !!v || 'Debes seleccionar una valoración']"
-                  inline
+                  class="d-flex justify-center flex-wrap gap-4"
                 >
                   <v-radio 
                     label="Positiva (+2)" 
@@ -75,6 +78,8 @@
                 size="large"
                 :disabled="!valid"
                 :loading="loading"
+                block
+                @click="submitVote"
               >
                 Enviar voto
               </v-btn>
@@ -123,15 +128,14 @@ const submitVote = async () => {
     try {
       await emit('vote-submitted', {
         nickname: nickname.value,
-        comment: comment.value,
+        comment: comment.value, // Cambiado de text a comment
         fighterId: selectedFighter.value,
         rating: rating.value
       })
       
       form.value.reset()
-      // Mostrar mensaje de éxito
     } catch (error) {
-      // Manejar error
+      console.error('Error al enviar voto:', error)
     } finally {
       loading.value = false
     }

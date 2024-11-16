@@ -1,14 +1,20 @@
 <template>
-  <v-container>
-    <v-row v-if="!hasWinner && !isTie">
-      <v-col cols="12">
+  <v-container fluid>
+    <v-row v-if="!hasWinner && !isTie" justify="center">
+      <v-col cols="12" lg="10" xl="8">
         <VoteForm
           :fighters="fighters"
           @vote-submitted="handleVote"
         />
       </v-col>
       
-      <v-col cols="12" md="6" v-for="fighter in fighters" :key="fighter._id">
+      <v-col 
+        v-for="fighter in fighters" 
+        :key="fighter._id"
+        cols="12"
+        sm="6"
+        lg="5"
+      >
         <FighterCard
           :fighter="fighter"
           :comments="getCommentsForFighter(fighter._id)"
@@ -17,13 +23,16 @@
       </v-col>
     </v-row>
     
-    <WinnerDisplay
-      v-else
-      :winner="winner"
-      :winner-score="winnerScore"
-      :is-tie="isTie"
-      @reset="resetVoting"
-    />
+    <v-row v-else justify="center">
+      <v-col cols="12" md="8" lg="6">
+        <WinnerDisplay
+          :winner="winner"
+          :winner-score="winnerScore"
+          :is-tie="isTie"
+          @reset="resetVoting"
+        />
+      </v-col>
+    </v-row>
   </v-container>
 </template>
 
