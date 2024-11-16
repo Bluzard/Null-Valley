@@ -37,7 +37,6 @@
 </template>
 
 <script setup>
-
 const fighters = ref([])
 const votes = ref([])
 const hasWinner = ref(false)
@@ -53,32 +52,31 @@ const fallbackFighters = [
   },
   {
     "_id": "6737f5fd45785a8f93497571",
-    "name": "Jonathan Lowrie",
+    "name": "Jonathan Lowrie", 
     "photo": "/images/jonathan.jpg"
   }
 ]
 
-// Cargar luchadores y votos al iniciar
 onMounted(async () => {
   try {
     const response = await fetch('/api/fighters')
     fighters.value = await response.json()
   } catch (error) {
-    console.error('Error loading fighters:', error)
     fighters.value = fallbackFighters
   }
   
+  await fetchVotes()
+})
+
+const fetchVotes = async () => {
   try {
     const response = await fetch('/api/votes')
     votes.value = await response.json()
     checkWinner()
   } catch (error) {
-    console.error('Error loading votes:', error)
     votes.value = []
   }
-})
-
-
+}
 
 const getCommentsForFighter = (fighterId) => {
   return votes.value.filter(vote => vote.fighterId === fighterId)
@@ -119,7 +117,7 @@ const checkWinner = () => {
 
 const handleVote = async (voteData) => {
   try {
-    const response = await fetch('/api/votes', {
+    await fetch('/api/votes', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -127,11 +125,8 @@ const handleVote = async (voteData) => {
       body: JSON.stringify(voteData)
     })
     
-    const newVote = await response.json()
-    votes.value.push(newVote)
-    checkWinner()
+    await fetchVotes()
   } catch (error) {
-    console.error('Error submitting vote:', error)
   }
 }
 
@@ -145,7 +140,6 @@ const resetVoting = async () => {
   try {
     await fetch('/api/votes', { method: 'DELETE' })
   } catch (error) {
-    console.error('Error resetting votes:', error)
   }
 }
 </script>
