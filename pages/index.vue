@@ -41,119 +41,160 @@
   </template>
   
   <script setup>
-  import { ref, computed, onMounted } from 'vue'
+  import { ref, computed, onMounted, watch } from 'vue';
   
-  const fighters = ref([])
-  const comments = ref([])
-  const selectedFighter = ref(null)
-  const winner = ref(null)
+  const fighters = ref([]);
+  const comments = ref([]);
+  const selectedFighter = ref(null);
+  const winner = ref(null);
   
-  const totalVotes = computed(() => {
-    return Object.values(comments.value).reduce((total, fighterComments) => {
-      return total + (fighterComments?.length || 0)
-    }, 0)
-  })
+  const totalVotes = computed(() => 
+    comments.value.filter(vote => 
+      vote.rating !== undefined && 
+      vote.rating !== null && 
+      (vote.rating > 0 || vote.rating < 0)
+    ).length
+  );
   
   const getFighterScore = (fighterId) => {
-    return comments.value[fighterId]?.reduce((total, vote) => total + vote.rating, 0) || 0
-  }
+    if (!fighterId || !comments.value.length) return 0;
+    
+    return comments.value
+      .filter(vote => vote.fighter === fighterId && vote.rating !== undefined)
+      .reduce((total, vote) => total + (Number(vote.rating) || 0), 0);
+  };
   
   const getPositiveVotes = (fighterId) => {
-    return comments.value[fighterId]?.filter(vote => vote.rating > 0).length || 0
-  }
+    if (!fighterId || !comments.value.length) return 0;
+    
+    return comments.value.filter(
+      vote => vote.fighter === fighterId && Number(vote.rating) > 0
+    ).length;
+  };
   
   const getNegativeVotes = (fighterId) => {
-    return comments.value[fighterId]?.filter(vote => vote.rating < 0).length || 0
-  }
+    if (!fighterId || !comments.value.length) return 0;
+    
+    return comments.value.filter(
+      vote => vote.fighter === fighterId && Number(vote.rating) < 0
+    ).length;
+  };
   
-  const prohibitedWords = ['Manzana', 'coliflor', 'bombilla', 'derecha', 'izquierda', 'rojo', 'azul']
+  const getFighterVotePercentage = (fighterId) => {
+    if (!fighterId || totalVotes.value === 0) return 0;
+    
+    const fighterVotes = comments.value.filter(
+      vote => vote.fighter === fighterId && vote.rating !== undefined
+    ).length;
+    
+    return Math.round((fighterVotes / totalVotes.value) * 100);
+  };
+  
+  const prohibitedWords = ['Manzana', 'coliflor', 'bombilla', 'derecha', 'izquierda', 'rojo', 'azul'];
   
   const obfuscateComment = (text) => {
-    let obfuscatedText = text
-    prohibitedWords.forEach(word => {
-      const regex = new RegExp(word, 'gi')
-      obfuscatedText = obfuscatedText.replace(regex, '****')
-    })
-    return obfuscatedText
-  }
+    let obfuscatedText = text;
+    prohibitedWords.forEach((word) => {
+      const regex = new RegExp(word, 'gi');
+      obfuscatedText = obfuscatedText.replace(regex, '****');
+    });
+    return obfuscatedText;
+  };
   
   const loadFighters = async () => {
     try {
-      const response = await fetch('/api/fighters')
+      const response = await fetch('/api/fighters');
       if (response.ok) {
-        fighters.value = await response.json()
-        loadComments()
+        fighters.value = await response.json();
       }
     } catch (error) {
-      console.error('Error loading fighters:', error)
+      console.error('Error al cargar fighters:', error);
     }
-  }
+  };
   
   const loadComments = async () => {
-  try {
-    const response = await fetch('/api/votes');
-    if (response.ok) {
-      const data = await response.json();
-      comments.value = Array.isArray(data) ? data : data.comments; // Asegúrate de que sea un array
-    } else {
-      console.error('Error en la respuesta del servidor:', response.status);
+    try {
+      const response = await fetch('/api/votes');
+      if (response.ok) {
+        const data = await response.json();
+        comments.value = Array.isArray(data) ? data : data.comments || [];
+        calculateWinner();
+      }
+    } catch (error) {
+      console.error('Error al cargar comentarios:', error);
+      comments.value = [];
     }
-  } catch (error) {
-    console.error('Error al cargar comentarios:', error);
-  }
-};
-
-
-
+  };
+  
   const calculateWinner = () => {
     if (totalVotes.value < 10) {
-      winner.value = null
-      return
+      winner.value = null;
+      return;
     }
   
-    const scores = {}
-    fighters.value.forEach(fighter => {
-      scores[fighter._id] = getFighterScore(fighter._id)
-    })
+    if (!fighters.value.length) {
+      winner.value = null;
+      return;
+    }
   
-    const maxScore = Math.max(...Object.values(scores))
-    const winningFighter = fighters.value.find(fighter => scores[fighter._id] === maxScore && maxScore > 0)
-    winner.value = winningFighter || null
-  }
+    const scores = {};
+    let maxScore = -Infinity;
+    let winningFighter = null;
+  
+    fighters.value.forEach(fighter => {
+      const score = getFighterScore(fighter._id);
+      scores[fighter._id] = score;
+      
+      if (score > maxScore) {
+        maxScore = score;
+        winningFighter = fighter;
+      }
+    });
+  
+    winner.value = maxScore > 0 ? winningFighter : null;
+  };
   
   const selectFighter = (fighter) => {
-    selectedFighter.value = fighter
-  }
+    selectedFighter.value = fighter;
+  };
   
-  const submitVote = async () => {
-    if (!isFormValid.value) return
+  const submitVote = async ({ nickname, comment, rating }) => {
+    if (!selectedFighter.value || rating === undefined || !nickname || !comment) {
+      return;
+    }
+  
+    const sanitizedComment = obfuscateComment(comment);
   
     const newVote = {
-      nickname: nickname.value,
-      comment: comment.value,
-      rating: rating.value,
-      fighter: selectedFighter.value._id
-    }
+      nickname,
+      comment: sanitizedComment,
+      rating: Number(rating),
+      fighter: selectedFighter.value._id,
+    };
   
     try {
       const response = await fetch('/api/votes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newVote)
-      })
+        body: JSON.stringify(newVote),
+      });
   
       if (response.ok) {
-        nickname.value = ''
-        comment.value = ''
-        rating.value = null
-        await loadComments()
+        await loadComments();
       }
     } catch (error) {
-      console.error('Error submitting vote:', error)
+      console.error('Error al enviar voto:', error);
     }
-  }
+  };
   
-  onMounted(loadFighters)
+  watch(comments, () => {
+    calculateWinner();
+  }, { deep: true });
+  
+  onMounted(() => {
+    loadFighters();
+    loadComments();
+  });
   </script>
   
   <style scoped>
