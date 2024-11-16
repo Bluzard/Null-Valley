@@ -1,4 +1,3 @@
-<!-- components/VoteForm.vue -->
 <template>
     <v-slide-y-transition>
       <v-row v-if="selectedFighter && totalVotes < 10" class="mb-8">
@@ -10,7 +9,7 @@
                   <v-text-field 
                     v-model="nickname" 
                     label="Apodo" 
-                    :rules="[v => !!v || 'Requerido', v => (v?.length >= 6 && v?.length <= 8) || 'Entre 6 y 8 caracteres', v => /^[a-zA-Z0-9]+$/.test(v) || 'Solo caracteres alfanuméricos']"
+                    :rules="nicknameRules" 
                     maxlength="8" 
                     required 
                     outlined 
@@ -22,7 +21,7 @@
                   <v-textarea 
                     v-model="comment" 
                     label="Comentarios" 
-                    :rules="[v => !!v || 'Requerido', v => v?.length <= 120 || 'Máximo 120 caracteres']"
+                    :rules="commentRules" 
                     maxlength="120" 
                     required 
                     outlined 
@@ -38,7 +37,13 @@
                   </v-radio-group>
                 </v-col>
                 <v-col cols="12" class="text-center">
-                  <v-btn type="submit" color="primary" x-large min-width="200" :disabled="!isFormValid">
+                  <v-btn 
+                    type="submit" 
+                    color="primary" 
+                    x-large 
+                    min-width="200" 
+                    :disabled="!isFormValid"
+                  >
                     Enviar Voto
                   </v-btn>
                 </v-col>
@@ -51,19 +56,58 @@
   </template>
   
   <script setup>
+  import { ref, computed } from 'vue'
+  
   const props = defineProps({
-    nickname: String,
-    comment: String,
-    rating: Number,
-    selectedFighter: Object,
-    totalVotes: Number,
-    isFormValid: Boolean
+    selectedFighter: {
+      type: Object,
+      default: null
+    },
+    totalVotes: {
+      type: Number,
+      required: true
+    }
   })
   
-  const emit = defineEmits(['submitVote'])
+  const emit = defineEmits(['submit-vote'])
+  
+  const nickname = ref('')
+  const comment = ref('')
+  const rating = ref(null)
+  
+  const nicknameRules = [
+    v => !!v || 'Requerido',
+    v => (v?.length >= 6 && v?.length <= 8) || 'Entre 6 y 8 caracteres',
+    v => /^[a-zA-Z0-9]+$/.test(v) || 'Solo caracteres alfanuméricos'
+  ]
+  
+  const commentRules = [
+    v => !!v || 'Requerido',
+    v => v?.length <= 120 || 'Máximo 120 caracteres'
+  ]
+  
+  const isFormValid = computed(() => {
+    return nickname.value?.length >= 6 &&
+           nickname.value?.length <= 8 &&
+           /^[a-zA-Z0-9]+$/.test(nickname.value) &&
+           comment.value?.length > 0 &&
+           comment.value?.length <= 120 &&
+           rating.value !== null &&
+           props.selectedFighter !== null &&
+           props.totalVotes < 10
+  })
   
   const submitVote = () => {
-    emit('submitVote')
+    if (!isFormValid.value) return
+    
+    emit('submit-vote', {
+      nickname: nickname.value,
+      comment: comment.value,
+      rating: rating.value
+    })
+    
+    nickname.value = ''
+    comment.value = ''
+    rating.value = null
   }
   </script>
-  

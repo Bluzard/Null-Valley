@@ -1,4 +1,3 @@
-<!-- components/WinnerCard.vue -->
 <template>
     <v-slide-y-transition>
       <v-row v-if="winner" class="mb-8">
@@ -17,15 +16,15 @@
                 <v-col cols="12" md="8">
                   <div class="text-h2 mb-4">{{ winner.name }}</div>
                   <v-chip large color="success" class="mb-4">
-                    Puntuación Final: {{ getFighterScore(winner._id) }}
+                    Puntuación Final: {{ fighterScore }}
                   </v-chip>
                   <div class="text-h6 mb-2">Resumen de votos:</div>
                   <div class="d-flex">
                     <v-chip class="mr-2" color="success">
-                      Positivos: {{ getPositiveVotes(winner._id) }}
+                      Positivos: {{ positiveVotes }}
                     </v-chip>
                     <v-chip color="error">
-                      Negativos: {{ getNegativeVotes(winner._id) }}
+                      Negativos: {{ negativeVotes }}
                     </v-chip>
                   </div>
                 </v-col>
@@ -38,11 +37,22 @@
   </template>
   
   <script setup>
-  const props = defineProps({
-    winner: Object,
-    getFighterScore: Function,
-    getPositiveVotes: Function,
-    getNegativeVotes: Function
+  defineProps({
+    winner: {
+      type: Object,
+      required: true
+    },
+    fighterScore: {
+      type: Number,
+      required: true
+    },
+    positiveVotes: {
+      type: Number,
+      required: true
+    },
+    negativeVotes: {
+      type: Number,
+      required: true
+    }
   })
   </script>
-  
