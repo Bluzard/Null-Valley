@@ -78,6 +78,8 @@ onMounted(async () => {
   }
 })
 
+
+
 const getCommentsForFighter = (fighterId) => {
   return votes.value.filter(vote => vote.fighterId === fighterId)
 }

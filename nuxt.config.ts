@@ -14,7 +14,7 @@ export default defineNuxtConfig({
     , 'nuxt-mongoose'
   ],
   mongoose: {
-    uri: 'mongodb+srv://admin:admin@clusterjoaco.0liwp.mongodb.net/NullValley',
+    uri: 'mongodb+srv://admin:admin@clusterjoaco.0liwp.mongodb.net/NullValley?retryWrites=true&w=majority&appName=ClusterJoaco',
     options: {},
     modelsDir: 'models',
     devtools: true,

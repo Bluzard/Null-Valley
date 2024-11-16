@@ -5,8 +5,14 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   console.log(body);
 
-  console.log('Creating new vote', body);
-  
+  //verificar nickname que no exista
+  const vote = await Vote.findOne({
+    nickname: body.nickname
+  });
+
+  if (vote) {
+    return { error: 'You have already voted' };
+  }  
 
   const newVote = new Vote({
     nickname: body.nickname,
