@@ -14,6 +14,7 @@
                 label="Nickname (6-8 caracteres alfanuméricos)"
                 :rules="nicknameRules"
                 required
+                maxlength="8"
                 variant="outlined"
                 clearable
                 density="comfortable"
