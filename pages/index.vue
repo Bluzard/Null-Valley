@@ -29,6 +29,7 @@
           :winner="winner"
           :winner-score="winnerScore"
           :is-tie="isTie"
+          :comments="votes"
           @reset="resetVoting"
         />
       </v-col>
