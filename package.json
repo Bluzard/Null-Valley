@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
+    "@pinia/nuxt": "^0.9.0",
     "body-parser": "^1.20.3",
     "express": "^4.21.1",
     "mongoose": "^8.8.1",
     "nuxt": "^3.14.159",
     "nuxt-mongoose": "^1.0.6",
+    "pinia": "^2.3.1",
     "vue": "latest",
     "vue-router": "latest"
   },
